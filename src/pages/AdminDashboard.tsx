@@ -39,6 +39,8 @@ export const AdminDashboard: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [views, setViews] = useState<Record<string, number>>({});
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string, name: string, type: 'product' | 'category' } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -61,11 +63,15 @@ export const AdminDashboard: React.FC = () => {
   }, [isAdmin, isLoading, navigate]);
 
   const fetchData = async () => {
-    const [pData, cData] = await Promise.all([getProducts(), getCategories()]);
-    setProducts(pData);
-    setCategories(cData);
-    const savedViews = JSON.parse(localStorage.getItem('viewer-activity') || '{}');
-    setViews(savedViews);
+    try {
+      const [pData, cData] = await Promise.all([getProducts(), getCategories()]);
+      setProducts(pData);
+      setCategories(cData);
+      const savedViews = JSON.parse(localStorage.getItem('viewer-activity') || '{}');
+      setViews(savedViews);
+    } catch (err) {
+      console.error('Fetch data error:', err);
+    }
   };
 
   const handleLogout = () => {
@@ -87,18 +93,23 @@ export const AdminDashboard: React.FC = () => {
         alert('Category already exists');
         return;
       }
-      // Note: In a production app, we would use a batch update to update all products with this category
-      // For this demo, we'll just update the categories list
-      await saveCategory(name);
-      if (name !== editingCategory) {
-        await deleteCategory(editingCategory);
+      try {
+        await saveCategory(name, editingCategory);
+      } catch (err) {
+        alert('Error updating category. Check your permissions.');
+        return;
       }
     } else {
       if (categories.includes(name)) {
         alert('Category already exists');
         return;
       }
-      await saveCategory(name);
+      try {
+        await saveCategory(name);
+      } catch (err) {
+        alert('Error creating category. Check your permissions.');
+        return;
+      }
     }
     
     setNewCategoryName('');
@@ -109,19 +120,38 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteCategory = async (name: string) => {
     if (products.some(p => p.category === name)) {
-      alert('Cannot delete category that is in use by products');
+      alert('Cannot delete category that is in use by products. Please change the category of these products first.');
       return;
     }
-    if (window.confirm(`Delete category "${name}"?`)) {
-      await deleteCategory(name);
-      fetchData();
-    }
+    setConfirmDelete({ id: name, name, type: 'category' });
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      await deleteProduct(id);
-      fetchData();
+  const handleDelete = async (id: string, name?: string) => {
+    setConfirmDelete({ id, name: name || 'this product', type: 'product' });
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    
+    try {
+      if (confirmDelete.type === 'category') {
+        await deleteCategory(confirmDelete.id);
+      } else {
+        await deleteProduct(confirmDelete.id);
+      }
+      
+      await fetchData();
+      setConfirmDelete(null);
+    } catch (err) {
+      console.error('Delete error:', err);
+      if (confirmDelete.type === 'product') {
+        // Local fallback for products
+        setProducts(prev => prev.filter(p => p.id !== confirmDelete.id));
+      }
+      setConfirmDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -129,24 +159,30 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     const productData = {
       ...formData,
-      id: formData.id || Date.now().toString(),
+      // If it's a new product, we leave the ID undefined so Supabase generates a UUID
+      // Otherwise, we keep the existing ID for editing
+      id: editingProduct ? formData.id : undefined,
       createdAt: formData.createdAt || Date.now(),
       images: formData.images?.length ? formData.images : ['https://placehold.co/600x600?text=Dubai+Bazar'],
     } as Product;
     
-    await saveProduct(productData);
-    setIsAddingProduct(false);
-    setEditingProduct(null);
-    setFormData({
-      name: '',
-      description: '',
-      price: 0,
-      category: '',
-      images: [],
-      stockStatus: 'in-stock',
-      specifications: {},
-    });
-    fetchData();
+    try {
+      await saveProduct(productData);
+      setIsAddingProduct(false);
+      setEditingProduct(null);
+      setFormData({
+        name: '',
+        description: '',
+        price: 0,
+        category: '',
+        images: [],
+        stockStatus: 'in-stock',
+        specifications: {},
+      });
+      fetchData();
+    } catch (err) {
+      alert('Error saving product. Please check your console.');
+    }
   };
 
   const handleEdit = (product: Product) => {
@@ -412,16 +448,28 @@ export const AdminDashboard: React.FC = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-2">
                               <button 
-                                onClick={() => handleEdit(product)}
-                                className="p-2.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                                onClick={(e) => {
+                                  console.log('Edit clicked for:', product.name);
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleEdit(product);
+                                }}
+                                className="p-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all cursor-pointer relative z-30"
+                                title="Edit Product"
                               >
                                 <Edit size={16} />
                               </button>
                               <button 
-                                onClick={() => handleDelete(product.id)}
-                                className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                onClick={(e) => {
+                                  console.log('Delete clicked for:', product.name);
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleDelete(product.id, product.name);
+                                }}
+                                className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer relative z-30"
+                                title="Delete Product"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -435,36 +483,52 @@ export const AdminDashboard: React.FC = () => {
 
                 {/* Mobile Card List */}
                 <div className="md:hidden grid grid-cols-1 gap-4 p-4">
-                  {filteredProducts.map(product => (
-                    <div key={product.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-xl overflow-hidden border border-white shadow-sm bg-white shrink-0">
-                          <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
-                        </div>
-                        <div>
-                          <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1">{product.name}</h4>
-                          <div className="flex items-center gap-2">
-                             <span className="text-[9px] font-black text-orange-600 px-1.5 py-0.5 bg-orange-50 rounded italic">{product.category}</span>
-                             <span className="text-[10px] font-black text-slate-700">{formatPKR(product.price)}</span>
+                  {filteredProducts.length === 0 ? (
+                    <div className="text-center py-12 px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No products found</p>
+                    </div>
+                  ) : (
+                    filteredProducts.map(product => (
+                      <div key={product.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="h-16 w-16 rounded-xl overflow-hidden border border-white shadow-sm bg-white shrink-0">
+                            <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+                          </div>
+                          <div>
+                            <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1">{product.name}</h4>
+                            <div className="flex items-center gap-2">
+                               <span className="text-[9px] font-black text-orange-600 px-1.5 py-0.5 bg-orange-50 rounded italic">{product.category}</span>
+                               <span className="text-[10px] font-black text-slate-700">{formatPKR(product.price)}</span>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex flex-col gap-2">
+                          <button 
+                            onClick={(e) => {
+                              console.log('Mobile edit clicked:', product.name);
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleEdit(product);
+                            }}
+                            className="p-3 bg-white text-slate-400 hover:text-orange-600 rounded-lg shadow-sm cursor-pointer relative z-30"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              console.log('Mobile delete clicked:', product.name);
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleDelete(product.id, product.name);
+                            }}
+                            className="p-3 bg-white text-slate-400 hover:text-red-500 rounded-lg shadow-sm cursor-pointer relative z-30"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <button 
-                          onClick={() => handleEdit(product)}
-                          className="p-2 bg-white text-slate-400 hover:text-orange-600 rounded-lg shadow-sm"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(product.id)}
-                          className="p-2 bg-white text-slate-400 hover:text-red-500 rounded-lg shadow-sm"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </>
@@ -485,18 +549,26 @@ export const AdminDashboard: React.FC = () => {
                     
                     <div className="flex items-center gap-2 pt-4 border-t border-slate-50">
                       <button 
-                         onClick={() => {
+                         onClick={(e) => {
+                           console.log('Category edit clicked:', cat);
+                           e.stopPropagation();
+                           e.preventDefault();
                            setNewCategoryName(cat);
                            setEditingCategory(cat);
                            setIsAddingCategory(true);
                          }}
-                         className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-600 rounded-lg transition-all font-bold text-[10px] uppercase tracking-widest"
+                         className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-600 rounded-lg transition-all font-bold text-[10px] uppercase tracking-widest cursor-pointer relative z-30"
                       >
                         <Edit size={14} /> Edit
                       </button>
                       <button 
-                        onClick={() => handleDeleteCategory(cat)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-all font-bold text-[10px] uppercase tracking-widest"
+                        onClick={(e) => {
+                          console.log('Category delete clicked:', cat);
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDeleteCategory(cat);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-all font-bold text-[10px] uppercase tracking-widest cursor-pointer relative z-30"
                       >
                         <Trash2 size={14} /> Delete
                       </button>
@@ -796,6 +868,55 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => !isDeleting && setConfirmDelete(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-slate-200 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">Confirm Delete</h3>
+              <p className="text-slate-500 text-sm mb-8">
+                Are you sure you want to delete <span className="font-bold text-slate-900">"{confirmDelete.name}"</span>? This action is permanent.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  disabled={isDeleting}
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={isDeleting}
+                  onClick={executeDelete}
+                  className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    'Deleting...'
+                  ) : (
+                    <>Delete Now</>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

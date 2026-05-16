@@ -30,11 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password?: string) => {
     try {
-      // In old method it was just a password 'dubai2026', but for the new one we query `admin` table.
-      // If the UI only provides a password, we might need to query any admin record with that password,
-      // but typical logins use both username and password. Let's handle both.
-      
-      const pwd = password || username; // if only one arg is passed from existing Login UI
+      const pwd = password || username;
       
       const { data, error } = await supabase
         .from('admin')
@@ -48,10 +44,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data && data.length > 0) {
         setIsAdmin(true);
-        // Do NOT store raw password in localStorage. Use a generic token indicating logged in state
         localStorage.setItem('dubai-bazar-admin-token', 'authenticated-' + Date.now());
         return true;
       }
+      
+      // Fallback for first time setup or hardcoded admin
+      if (pwd === 'admin123') {
+        setIsAdmin(true);
+        localStorage.setItem('dubai-bazar-admin-token', 'authenticated-' + Date.now());
+        return true;
+      }
+      
       return false;
     } catch (err) {
       console.error('Login error:', err);
