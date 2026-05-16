@@ -21,7 +21,7 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'seo'>('products');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [seoData, setSeoData] = useState({
-    title: localStorage.getItem('dubai-bazar-seo-title') || 'Dubai Bazar | Karachi Elite Tech',
+    title: localStorage.getItem('dubai-bazar-seo-title') || 'Dubai Bazar | The place of old dreams',
     description: localStorage.getItem('dubai-bazar-seo-description') || 'Gadgets, collectibles, and gaming gear in Karachi.'
   });
 

@@ -9,22 +9,11 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({ className, size = 'md', showText = true }) => {
-  const [imgSrc, setImgSrc] = React.useState<string>('https://kommodo.ai/u/JjRsF64rtjBfhz41PNvM.png');
+  const [imgSrc, setImgSrc] = React.useState<string>('/logo.png');
   const [imageError, setImageError] = React.useState(false);
   
   const handleImageError = () => {
-    if (imgSrc === 'https://kommodo.ai/u/JjRsF64rtjBfhz41PNvM.png') {
-      // Try with .jpg extension if .png fails
-      setImgSrc('https://kommodo.ai/u/JjRsF64rtjBfhz41PNvM.jpg');
-    } else if (imgSrc === 'https://kommodo.ai/u/JjRsF64rtjBfhz41PNvM.jpg') {
-      // Try the landing page URL as a last-ditch effort (though unlikely to work directly in img tag)
-      setImgSrc('https://kommodo.ai/i/JjRsF64rtjBfhz41PNvM.png');
-    } else if (imgSrc === 'https://kommodo.ai/i/JjRsF64rtjBfhz41PNvM.png') {
-      // Fallback to local logo if it exists
-      setImgSrc('/logo.png');
-    } else {
-      setImageError(true);
-    }
+    setImageError(true);
   };
 
   const sizes = {
@@ -50,6 +39,8 @@ export const Logo: React.FC<LogoProps> = ({ className, size = 'md', showText = t
             src={imgSrc} 
             alt="Dubai Bazar" 
             className="w-full h-full object-contain"
+            fetchpriority="high"
+            loading="eager"
             onError={handleImageError}
           />
         ) : (
@@ -63,7 +54,7 @@ export const Logo: React.FC<LogoProps> = ({ className, size = 'md', showText = t
             Dubai Bazar
           </span>
           <span className="text-[10px] uppercase tracking-[0.2em] text-orange-600 font-bold -mt-0.5">
-            Karachi Elite Tech
+            The place of old dreams
           </span>
         </div>
       )}

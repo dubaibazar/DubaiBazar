@@ -2,7 +2,7 @@ import { Product } from './types';
 
 export const BUSINESS_INFO = {
   name: 'Dubai Bazar',
-  tagline: 'Karachi Elite Tech',
+  tagline: 'The place of old dreams',
   location: 'Jackson Bazar, Kemari, Karachi, Pakistan',
   whatsapp: '03073992661',
   whatsappGroup: 'https://chat.whatsapp.com/BfTXVDBNr6x5UPw8AaoZSg',
