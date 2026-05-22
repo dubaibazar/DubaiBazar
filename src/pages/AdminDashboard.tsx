@@ -210,9 +210,9 @@ export const AdminDashboard: React.FC = () => {
     p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalViews = (Object.values(views) as number[]).reduce((a, b) => a + b, 0);
+  const totalViews = products.reduce((a, b) => a + (b.views || 0), 0);
   const topProduct = products.reduce((prev, current) => {
-    return (views[prev?.id || ''] || 0) > (views[current.id] || 0) ? prev : current;
+    return (prev?.views || 0) > (current.views || 0) ? prev : current;
   }, products[0]);
 
   return (

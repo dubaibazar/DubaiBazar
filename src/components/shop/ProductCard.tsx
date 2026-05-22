@@ -5,6 +5,7 @@ import { formatPKR, cn } from '../../lib/utils';
 import { useCart } from '../../context/CartContext';
 import { motion } from 'motion/react';
 import { BUSINESS_INFO } from '../../constants';
+import { incrementProductViews } from '../../lib/db';
 
 interface ProductCardProps {
   product: Product;
@@ -22,9 +23,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
   };
 
   const trackView = () => {
+    // 1. Maintain local history (in real app, this could also update local badge)
     const views = JSON.parse(localStorage.getItem('viewer-activity') || '{}');
     views[product.id] = (views[product.id] || 0) + 1;
     localStorage.setItem('viewer-activity', JSON.stringify(views));
+    
+    // 2. Track in DB real-time
+    incrementProductViews(product.id);
   };
 
   const handleQuickView = () => {

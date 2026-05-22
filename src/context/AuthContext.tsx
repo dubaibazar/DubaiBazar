@@ -39,10 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (error) {
         console.error('Supabase fetch error:', error);
-        return false;
-      }
-      
-      if (data && data.length > 0) {
+      } else if (data && data.length > 0) {
         setIsAdmin(true);
         localStorage.setItem('dubai-bazar-admin-token', 'authenticated-' + Date.now());
         return true;

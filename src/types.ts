@@ -15,6 +15,7 @@ export interface Product {
   isTrending?: boolean;
   specifications: Record<string, string>;
   createdAt: number;
+  views?: number;
 }
 
 export interface CartItem extends Product {

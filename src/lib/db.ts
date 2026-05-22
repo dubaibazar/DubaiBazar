@@ -17,7 +17,8 @@ function mapRowToProduct(row: any): Product {
     isFeatured: !!row.visible_in_hero,
     isTrending: !!row.sale_badge,
     specifications: row.specifications || {},
-    createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+    createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+    views: Number(row.views || 0)
   };
 }
 
@@ -34,7 +35,8 @@ function mapProductToRow(product: Product): any {
     product_description: product.description,
     specifications: product.specifications,
     gallery_assets: product.images,
-    created_at: new Date(product.createdAt || Date.now()).toISOString()
+    created_at: new Date(product.createdAt || Date.now()).toISOString(),
+    views: product.views || 0
   };
 
   // Only include ID if it looks like a valid UUID. 
@@ -153,6 +155,37 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) {
     console.error('Error deleting product:', error);
     throw error;
+  }
+}
+
+export async function incrementProductViews(id: string): Promise<void> {
+  try {
+    // 1. Fetch current views
+    const { data: product, error: fetchErr } = await supabase
+      .from('products')
+      .select('views')
+      .eq('id', id)
+      .single();
+      
+    if (fetchErr) {
+      console.warn('Could not fetch views for product', id, fetchErr);
+      return;
+    }
+    
+    const currentViews = Number(product.views || 0);
+    
+    // 2. Increment and update
+    const { error: updateErr } = await supabase
+      .from('products')
+      .update({ views: currentViews + 1 })
+      .eq('id', id);
+      
+    if (updateErr) {
+      console.warn('Could not increment views for product', id, updateErr);
+    }
+  } catch (err) {
+    // Silently ignore so we don't break the UI if the column doesn't exist yet
+    console.warn('View increment failed', err);
   }
 }
 

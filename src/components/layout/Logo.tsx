@@ -39,7 +39,7 @@ export const Logo: React.FC<LogoProps> = ({ className, size = 'md', showText = t
             src={imgSrc} 
             alt="Dubai Bazar" 
             className="w-full h-full object-contain"
-            fetchpriority="high"
+            fetchPriority="high"
             loading="eager"
             onError={handleImageError}
           />

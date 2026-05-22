@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
 
         <div className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} Dubai Bazar Ops. Restricted Domain.
+            &copy; {new Date().getFullYear()} Dubai Bazar. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <span className="text-[10px] font-black tracking-[0.2em] text-slate-300 uppercase px-4 py-2 border border-slate-100 rounded-2xl">Verified Official Outlet</span>
