@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, saveProduct, deleteProduct, resetDB, getCategories, saveCategory, deleteCategory } from '../lib/db';
+import { getProducts, saveProduct, deleteProduct, resetDB, getCategories, saveCategory, deleteCategory, subscribeProducts, subscribeCategories } from '../lib/db';
 import { Product } from '../types';
 import { 
   BarChart3, Plus, Edit, Trash2, LayoutDashboard, Settings as SettingsIcon, 
@@ -18,7 +18,7 @@ export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'seo'>('products');
+  const [activeTab, setActiveTab ] = useState<'products' | 'categories' | 'seo'>('products');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [seoData, setSeoData] = useState({
     title: localStorage.getItem('dubai-bazar-seo-title') || 'Dubai Bazar | The place of old dreams',
@@ -57,22 +57,24 @@ export const AdminDashboard: React.FC = () => {
       if (!isAdmin) {
         navigate('/login');
       } else {
-        fetchData();
+        // Subscribe to real-time changes
+        const unsubProducts = subscribeProducts((data) => {
+          setProducts(data);
+        });
+        const unsubCategories = subscribeCategories((data) => {
+          setCategories(data);
+        });
+
+        const savedViews = JSON.parse(localStorage.getItem('viewer-activity') || '{}');
+        setViews(savedViews);
+
+        return () => {
+          unsubProducts();
+          unsubCategories();
+        };
       }
     }
   }, [isAdmin, isLoading, navigate]);
-
-  const fetchData = async () => {
-    try {
-      const [pData, cData] = await Promise.all([getProducts(), getCategories()]);
-      setProducts(pData);
-      setCategories(cData);
-      const savedViews = JSON.parse(localStorage.getItem('viewer-activity') || '{}');
-      setViews(savedViews);
-    } catch (err) {
-      console.error('Fetch data error:', err);
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -115,7 +117,6 @@ export const AdminDashboard: React.FC = () => {
     setNewCategoryName('');
     setIsAddingCategory(false);
     setEditingCategory(null);
-    fetchData();
   };
 
   const handleDeleteCategory = async (name: string) => {
@@ -141,7 +142,6 @@ export const AdminDashboard: React.FC = () => {
         await deleteProduct(confirmDelete.id);
       }
       
-      await fetchData();
       setConfirmDelete(null);
     } catch (err) {
       console.error('Delete error:', err);
@@ -179,7 +179,6 @@ export const AdminDashboard: React.FC = () => {
         stockStatus: 'in-stock',
         specifications: {},
       });
-      fetchData();
     } catch (err) {
       alert('Error saving product. Please check your console.');
     }
@@ -257,7 +256,6 @@ export const AdminDashboard: React.FC = () => {
             onClick={async () => {
               if (window.confirm('This will delete all your changes and reset to initial products. Continue?')) {
                 await resetDB();
-                fetchData();
               }
             }}
             className="w-full flex items-center gap-3 px-4 py-3 text-orange-400 hover:bg-orange-500/10 rounded-xl transition-colors font-black text-[10px] uppercase tracking-widest"

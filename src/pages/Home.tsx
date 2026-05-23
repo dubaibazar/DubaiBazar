@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getProducts, incrementSiteViews } from '../lib/db';
+import { getProducts, incrementSiteViews, subscribeProducts } from '../lib/db';
 import { Product } from '../types';
 import { ProductCard } from '../components/shop/ProductCard';
 import { ProductQuickView } from '../components/shop/ProductQuickView';
@@ -17,14 +17,18 @@ export const Home: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      const data = await getProducts();
+    setIsLoading(true);
+    
+    // Subscribe to live, real-time product updates on Firestore
+    const unsubscribe = subscribeProducts((data) => {
       setProducts(data);
       setIsLoading(false);
-    };
-    fetchProducts();
+    });
+
     // Track site-wide views in real-time on every landing page visit/reload
     incrementSiteViews();
+
+    return () => unsubscribe();
   }, []);
 
   const categories = ['All', ...new Set(products.map(p => p.category))];

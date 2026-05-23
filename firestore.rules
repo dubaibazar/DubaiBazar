@@ -24,37 +24,12 @@ service cloud.firestore {
 
     // Products collection rules
     match /products/{productId} {
-      allow get, list: if true; // Public customers can read products
-      
-      allow create: if isAdmin() && 
-                    request.resource.data.keys().hasAll(['name', 'price', 'category', 'stockStatus', 'createdAt']) &&
-                    request.resource.data.name is string && request.resource.data.name.size() <= 200 &&
-                    request.resource.data.price is number && request.resource.data.price > 0 &&
-                    request.resource.data.category is string &&
-                    request.resource.data.stockStatus in ['in-stock', 'out-of-stock'] &&
-                    request.resource.data.createdAt is number;
-
-      allow update: if (isAdmin() && 
-                       request.resource.data.createdAt == resource.data.createdAt) || 
-                      (
-                        // Allow public visitors to increment product views count
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
-                        request.resource.data.views is number &&
-                        (resource.data == null || request.resource.data.views == resource.data.views + 1)
-                      );
-
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Categories collection rules
     match /categories/{categoryId} {
-      allow get, list: if true; // Public customers can read categories
-      
-      allow create, update: if isAdmin() &&
-                            request.resource.data.keys().hasAll(['name']) &&
-                            request.resource.data.name is string && request.resource.data.name.size() <= 60;
-
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Admins metadata collection

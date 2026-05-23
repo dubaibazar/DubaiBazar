@@ -10,7 +10,8 @@ import {
   updateDoc, 
   getDoc, 
   query, 
-  orderBy 
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore';
 
 const INITIAL_CATEGORIES = ['Gaming', 'Décor', 'Collectibles', 'PC Accessories', 'Gadgets'];
@@ -134,20 +135,40 @@ export async function getProducts(): Promise<Product[]> {
       return items;
     })();
 
-    const dbProducts = await withTimeout(fetchPromise, 1800);
+    let dbProducts = await withTimeout(fetchPromise, 3000);
 
-    if (dbProducts && dbProducts.length > 0) {
-      const local = getLocalProducts();
-      const merged = dbProducts.map(dbp => {
-        const lp = local.find(x => x.id === dbp.id);
-        if (lp && lp.views > dbp.views) {
-          dbp.views = lp.views;
-        }
-        return dbp;
+    // Auto-seed default products if Firestore is completely empty (fresh database)
+    if (dbProducts.length === 0) {
+      console.log('Firebase store is empty, auto-seeding default products...');
+      const seedPromises = INITIAL_PRODUCTS.map(p => {
+        return setDoc(doc(db, 'products', p.id), {
+          name: p.name,
+          description: p.description,
+          price: Number(p.price),
+          category: p.category,
+          images: p.images,
+          stockStatus: p.stockStatus,
+          isFeatured: !!p.isFeatured,
+          isTrending: !!p.isTrending,
+          specifications: p.specifications || {},
+          createdAt: Number(p.createdAt || Date.now()),
+          views: 0
+        });
       });
-      saveLocalProducts(merged);
-      return merged;
+      await Promise.all(seedPromises);
+      dbProducts = [...INITIAL_PRODUCTS];
     }
+
+    const local = getLocalProducts();
+    const merged = dbProducts.map(dbp => {
+      const lp = local.find(x => x.id === dbp.id);
+      if (lp && lp.views > dbp.views) {
+        dbp.views = lp.views;
+      }
+      return dbp;
+    });
+    saveLocalProducts(merged);
+    return merged;
   } catch (err) {
     console.warn('Firestore products fetch issue. Serving cached:', err);
   }
@@ -166,11 +187,20 @@ export async function getCategories(): Promise<string[]> {
       return items;
     })();
 
-    const dbCategories = await withTimeout(fetchPromise, 1500);
-    if (dbCategories && dbCategories.length > 0) {
-      saveLocalCategories(dbCategories);
-      return dbCategories;
+    let dbCategories = await withTimeout(fetchPromise, 2500);
+
+    // Auto-seed default categories if Firestore is completely empty
+    if (dbCategories.length === 0) {
+      console.log('Firebase store has no categories, auto-seeding default categories...');
+      const seedPromises = INITIAL_CATEGORIES.map(name => {
+        return setDoc(doc(db, 'categories', name), { name });
+      });
+      await Promise.all(seedPromises);
+      dbCategories = [...INITIAL_CATEGORIES];
     }
+
+    saveLocalCategories(dbCategories);
+    return dbCategories;
   } catch (err) {
     console.warn('Firestore categories fetch issue. Serving cached:', err);
   }
@@ -401,4 +431,57 @@ export async function resetDB(): Promise<void> {
     console.error('Remote reset failure:', err);
     alert('Failed to reset remote Firebase database, but local configurations are cleared.');
   }
+}
+
+export function subscribeProducts(onChange: (products: Product[]) => void): () => void {
+  const path = 'products';
+  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+  
+  return onSnapshot(q, (snapshot) => {
+    const items: Product[] = [];
+    snapshot.forEach(docSnap => {
+      const d = docSnap.data();
+      items.push({
+        id: docSnap.id,
+        name: d.name || '',
+        description: d.description || '',
+        price: Number(d.price || 0),
+        category: d.category || '',
+        images: d.images || [],
+        stockStatus: d.stockStatus || 'in-stock',
+        isFeatured: !!d.isFeatured,
+        isTrending: !!d.isTrending,
+        specifications: d.specifications || {},
+        createdAt: Number(d.createdAt || Date.now()),
+        views: Number(d.views || 0)
+      });
+    });
+    
+    if (items.length > 0) {
+      saveLocalProducts(items);
+      onChange(items);
+    } else {
+      onChange(getLocalProducts());
+    }
+  }, (err) => {
+    console.error("Products subscription error:", err);
+  });
+}
+
+export function subscribeCategories(onChange: (categories: string[]) => void): () => void {
+  const path = 'categories';
+  return onSnapshot(collection(db, path), (snapshot) => {
+    const items: string[] = [];
+    snapshot.forEach(docSnap => {
+      items.push(docSnap.id);
+    });
+    if (items.length > 0) {
+      saveLocalCategories(items);
+      onChange(items);
+    } else {
+      onChange(getLocalCategories());
+    }
+  }, (err) => {
+    console.error("Categories subscription error:", err);
+  });
 }
