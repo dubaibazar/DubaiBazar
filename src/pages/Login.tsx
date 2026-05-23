@@ -10,7 +10,8 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,6 +24,16 @@ export const Login: React.FC = () => {
       navigate('/admin');
     } else {
       setError('Incorrect password. Please try again.');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleSubmitting(true);
+    setError('');
+    const success = await loginWithGoogle();
+    setIsGoogleSubmitting(false);
+    if (success) {
+      navigate('/admin');
     }
   };
 
@@ -49,7 +60,7 @@ export const Login: React.FC = () => {
               placeholder="••••••••••••" 
               className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-bold text-slate-900 tracking-[0.3em] text-center"
               autoFocus
-              disabled={isSubmitting}
+              disabled={isSubmitting || isGoogleSubmitting}
             />
             {error && (
               <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-black mt-2 uppercase tracking-widest">
@@ -61,18 +72,37 @@ export const Login: React.FC = () => {
 
           <button 
             type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-orange-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95 group uppercase tracking-widest disabled:opacity-50"
+            disabled={isSubmitting || isGoogleSubmitting}
+            className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg active:scale-95 group uppercase tracking-widest disabled:opacity-50 cursor-pointer"
           >
-            {isSubmitting ? 'Authenticating...' : 'Access Dashboard'}
+            {isSubmitting ? 'Authenticating...' : 'Access with Key'}
             {!isSubmitting && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
 
+        <div className="relative flex py-5 items-center">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="flex-shrink mx-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">or</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <button 
+          onClick={handleGoogleLogin}
+          disabled={isSubmitting || isGoogleSubmitting}
+          className="w-full bg-orange-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95 uppercase tracking-widest disabled:opacity-50 cursor-pointer"
+        >
+          {isGoogleSubmitting ? 'Connecting...' : 'Sign In with Google'}
+          {!isGoogleSubmitting && (
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.514 5.514 0 0 1 8.43 13c0-3.037 2.477-5.514 5.56-5.514 1.358 0 2.597.483 3.57 1.285l3.12-3.12A9.457 9.457 0 0 0 13.99 3c-5.244 0-9.49 4.246-9.49 9.49s4.246 9.49 9.49 9.49c5.244 0 9.17-3.684 9.17-9.317 0-.583-.05-1.127-.156-1.638H12.24z"/>
+            </svg>
+          )}
+        </button>
+
         <div className="mt-10 pt-8 border-t border-slate-100">
           <p className="text-[9px] text-center text-slate-400 leading-relaxed uppercase tracking-[0.2em] font-bold">
             Dubai Bazar • Karachi Ops Center<br />
-            Secure V2 Connection Active
+            Secure Google V2 Identity Protocol
           </p>
         </div>
       </motion.div>

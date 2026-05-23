@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An ecommerce product of Dubai Bazar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the product" },
+        "name": { "type": "string", "description": "Display name of the product" },
+        "description": { "type": "string", "description": "Detailed description of the product" },
+        "price": { "type": "number", "description": "Price of the product" },
+        "category": { "type": "string", "description": "The category name this product belongs to" },
+        "images": { "type": "array", "description": "List of product image URLs" },
+        "stockStatus": { "type": "string", "enum": ["in-stock", "out-of-stock"], "description": "Current availability status" },
+        "isFeatured": { "type": "boolean", "description": "Whether the product is highlighted in the hero section" },
+        "isTrending": { "type": "boolean", "description": "Whether the product has a trending badge" },
+        "specifications": { "type": "object", "description": "Key-value pair specifications of the product" },
+        "createdAt": { "type": "number", "description": "Timestamp when the product was created" },
+        "views": { "type": "number", "description": "Number of times this product details were viewed" }
+      },
+      "required": ["name", "price", "category", "stockStatus", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A product category designation",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The unique category name" }
+      },
+      "required": ["name"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Administrative credential secrets",
+      "type": "object",
+      "properties": {
+        "admin_password": { "type": "string", "description": "Master password for admin features" }
+      },
+      "required": ["admin_password"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Global collection containing all the digital products of Dubai Bazar."
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Determines the list of valid e-commerce categories."
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Admin entries containing credentials for verification."
+    }
+  }
+}
