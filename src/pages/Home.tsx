@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getProducts } from '../lib/db';
+import { getProducts, incrementSiteViews } from '../lib/db';
 import { Product } from '../types';
 import { ProductCard } from '../components/shop/ProductCard';
 import { ProductQuickView } from '../components/shop/ProductQuickView';
@@ -23,6 +23,8 @@ export const Home: React.FC = () => {
       setIsLoading(false);
     };
     fetchProducts();
+    // Track site-wide views in real-time on every landing page visit/reload
+    incrementSiteViews();
   }, []);
 
   const categories = ['All', ...new Set(products.map(p => p.category))];

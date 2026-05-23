@@ -189,6 +189,26 @@ export async function incrementProductViews(id: string): Promise<void> {
   }
 }
 
+export async function incrementSiteViews(): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('increment_site_views');
+    if (error) {
+      console.warn('RPC increment_site_views failed, running client-side fallback', error);
+      // Fallback: Increment views of the first product to keep total views alive
+      const { data: productsList } = await supabase.from('products').select('id, views').limit(1);
+      if (productsList && productsList.length > 0) {
+        const topProd = productsList[0];
+        await supabase
+          .from('products')
+          .update({ views: Number(topProd.views || 0) + 1 })
+          .eq('id', topProd.id);
+      }
+    }
+  } catch (err) {
+    console.warn('Could not increment site views', err);
+  }
+}
+
 export async function resetDB(): Promise<void> {
   console.log('Resetting database...');
   
